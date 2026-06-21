@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador FitzHugh-Nagumo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',Arial,sans-serif;background:#E8F5F3;min-height:100vh;padding:24px}
+h1{font-size:20px;font-weight:500;color:#1C4A45;margin-bottom:4px}
+.subtitle{font-size:13px;color:#4A8C85;margin-bottom:20px}
+.badges{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.badge{background:#fff;border:0.5px solid #A8D8D0;border-radius:12px;padding:12px 14px}
+.badge-label{font-size:11px;color:#4A8C85;margin-bottom:4px}
+.badge-val{font-size:20px;font-weight:500;color:#1C4A45}
+.badge-val.ok{color:#0F6E56}
+.badge-val.err{color:#A32D2D}
+.layout{display:grid;grid-template-columns:200px 1fr;gap:14px}
+.panel{background:#fff;border:0.5px solid #A8D8D0;border-radius:12px;padding:16px}
+.panel-title{font-size:11px;font-weight:500;color:#4A8C85;text-transform:uppercase;letter-spacing:.6px;margin-bottom:14px}
+.sl{margin-bottom:13px}
+.sl-top{display:flex;justify-content:space-between;margin-bottom:5px}
+.sl-name{font-size:12px;color:#1C4A45}
+.sl-num{font-size:13px;font-weight:500;color:#0F6E56;font-family:monospace}
+.sl-num.warn{color:#854F0B}
+input[type=range]{width:100%;accent-color:#3D9E92}
+.divider{height:0.5px;background:#A8D8D0;margin:14px 0}
+.tip{font-size:11px;color:#4A8C85;line-height:1.7}
+.tip b{color:#1C4A45;font-weight:500}
+.charts{display:flex;flex-direction:column;gap:10px}
+.chart-card{background:#fff;border:0.5px solid #A8D8D0;border-radius:12px;padding:12px 14px}
+.chart-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
+.chart-title{font-size:13px;font-weight:500;color:#1C4A45}
+.chart-sub{font-size:11px;color:#4A8C85;margin-top:1px}
+.leg{display:flex;gap:12px;flex-shrink:0}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:#4A8C85}
+.leg-line{width:16px;height:2px;border-radius:1px;flex-shrink:0}
+.leg-dash{width:16px;height:0;border-top:2px dashed;flex-shrink:0}
+.footer{margin-top:16px;font-size:11px;color:#4A8C85;text-align:center}
+</style>
+</head>
+<body>
+
+<h1>Simulador FitzHugh-Nagumo</h1>
+<div class="subtitle">M&#233;todo num&#233;rico RK4 &#8212; actualizaci&#243;n en tiempo real</div>
+
+<div class="badges">
+  <div class="badge">
+    <div class="badge-label">R&#233;gimen</div>
+    <div class="badge-val" id="bReg">-</div>
+  </div>
+  <div class="badge">
+    <div class="badge-label">Picos detectados</div>
+    <div class="badge-val" id="bPicos">-</div>
+  </div>
+  <div class="badge">
+    <div class="badge-label">v m&#225;ximo</div>
+    <div class="badge-val" id="bVmax">-</div>
+  </div>
+  <div class="badge">
+    <div class="badge-label">Estado RK4</div>
+    <div class="badge-val" id="bRK">listo</div>
+  </div>
+</div>
+
+<div class="layout">
+
+  <div class="panel">
+    <div class="panel-title">Par&#225;metros</div>
+
+    <div class="sl">
+      <div class="sl-top">
+        <span class="sl-name">Corriente I<sub>ext</sub></span>
+        <span class="sl-num" id="oI">0.80</span>
+      </div>
+      <input type="range" min="0" max="1.5" step="0.05" value="0.8" id="sI">
+    </div>
+    <div class="sl">
+      <div class="sl-top">
+        <span class="sl-name">Par&#225;metro a</span>
+        <span class="sl-num" id="oA">0.70</span>
+      </div>
+      <input type="range" min="0.3" max="1.2" step="0.05" value="0.7" id="sA">
+    </div>
+    <div class="sl">
+      <div class="sl-top">
+        <span class="sl-name">Par&#225;metro b</span>
+        <span class="sl-num" id="oB">0.80</span>
+      </div>
+      <input type="range" min="0.3" max="1.2" step="0.05" value="0.8" id="sB">
+    </div>
+    <div class="sl">
+      <div class="sl-top">
+        <span class="sl-name">Escala temporal &#964;</span>
+        <span class="sl-num" id="oT">12.5</span>
+      </div>
+      <input type="range" min="5" max="25" step="0.5" value="12.5" id="sT">
+    </div>
+    <div class="sl">
+      <div class="sl-top">
+        <span class="sl-name">Paso h</span>
+        <span class="sl-num" id="oH">0.05</span>
+      </div>
+      <input type="range" min="0.01" max="0.45" step="0.01" value="0.05" id="sH">
+    </div>
+
+    <div class="divider"></div>
+    <div class="tip">
+      <b>I &gt; 0.35</b> &#8594; oscilaciones<br>
+      <b>h &gt; 0.30</b> &#8594; inestabilidad<br>
+      <b>&#964; grande</b> &#8594; recuperaci&#243;n lenta<br>
+      <b>b peque&#241;o</b> &#8594; ciclo m&#225;s grande
+    </div>
+  </div>
+
+  <div class="charts">
+
+    <div class="chart-card">
+      <div class="chart-head">
+        <div>
+          <div class="chart-title">v(t) &#8212; voltaje de membrana</div>
+          <div class="chart-sub">variable r&#225;pida &#183; potencial de acci&#243;n</div>
+        </div>
+        <div class="leg">
+          <div class="leg-item"><div class="leg-line" style="background:#1D9E75"></div>v(t)</div>
+        </div>
+      </div>
+      <div style="position:relative;height:108px">
+        <canvas id="cV"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-head">
+        <div>
+          <div class="chart-title">w(t) &#8212; variable de recuperaci&#243;n</div>
+          <div class="chart-sub">variable lenta &#183; inactivaci&#243;n i&#243;nica</div>
+        </div>
+        <div class="leg">
+          <div class="leg-item"><div class="leg-line" style="background:#5DCAA5"></div>w(t)</div>
+        </div>
+      </div>
+      <div style="position:relative;height:108px">
+        <canvas id="cW"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-head">
+        <div>
+          <div class="chart-title">Plano de fase (v, w)</div>
+          <div class="chart-sub">trayectoria y nulclinas del sistema</div>
+        </div>
+        <div class="leg">
+          <div class="leg-item"><div class="leg-line" style="background:#085041"></div>trayectoria</div>
+          <div class="leg-item"><div class="leg-dash" style="border-color:#1D9E75"></div>nulclina v</div>
+          <div class="leg-item"><div class="leg-dash" style="border-color:#9FE1CB"></div>nulclina w</div>
+        </div>
+      </div>
+      <div style="position:relative;height:180px">
+        <canvas id="cPh"></canvas>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="footer">Modelo FitzHugh-Nagumo &#8212; Matem&#225;tica Aplicada III 2026 &#8212; M&#233;todo RK4 &#183; T=150 &#183; condici&#243;n inicial v=-1.2, w=-0.6</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const T=150;
+
+function rk4(I,a,b,tau,h){
+  const steps=Math.floor(T/h);
+  const dec=Math.max(1,Math.floor(steps/500));
+  let v=-1.2,w=-0.6;
+  const ts=[],vs=[],ws=[];
+  const fv=(v,w)=>v-v*v*v/3-w+I;
+  const fw=(v,w)=>(v+a-b*w)/tau;
+  let bad=false;
+  for(let i=0;i<steps;i++){
+    if(i%dec===0){ts.push((i*h).toFixed(2));vs.push(+v.toFixed(4));ws.push(+w.toFixed(4));}
+    const k1v=fv(v,w),k1w=fw(v,w);
+    const k2v=fv(v+h/2*k1v,w+h/2*k1w),k2w=fw(v+h/2*k1v,w+h/2*k1w);
+    const k3v=fv(v+h/2*k2v,w+h/2*k2w),k3w=fw(v+h/2*k2v,w+h/2*k2w);
+    const k4v=fv(v+h*k3v,w+h*k3w),k4w=fw(v+h*k3v,w+h*k3w);
+    v+=h/6*(k1v+2*k2v+2*k3v+k4v);
+    w+=h/6*(k1w+2*k2w+2*k3w+k4w);
+    if(!isFinite(v)||Math.abs(v)>80){bad=true;break;}
+  }
+  return{ts,vs,ws,bad};
+}
+
+function nullclines(I,a,b){
+  const vv=[],nv=[],nw=[];
+  for(let v=-2.9;v<=2.9;v+=0.07){
+    vv.push(+v.toFixed(2));
+    nv.push(+(v-v*v*v/3+I).toFixed(4));
+    nw.push(+((v+a)/b).toFixed(4));
+  }
+  return{vv,nv,nw};
+}
+
+function countPeaks(vs){
+  let n=0,prev=false;
+  for(let i=1;i<vs.length-1;i++){
+    const p=vs[i]>vs[i-1]&&vs[i]>vs[i+1]&&vs[i]>0.5;
+    if(p&&!prev){n++;prev=true;}else if(!p)prev=false;
+  }
+  return n;
+}
+
+const axOpts=(xl,yl)=>({
+  responsive:true,maintainAspectRatio:false,animation:{duration:120},
+  plugins:{legend:{display:false}},
+  scales:{
+    x:{ticks:{color:'#4A8C85',font:{size:9,family:'Inter,Arial,sans-serif'},maxTicksLimit:6},grid:{color:'rgba(107,191,181,0.15)'},title:{display:true,text:xl,color:'#4A8C85',font:{size:10,family:'Inter,Arial,sans-serif'}}},
+    y:{ticks:{color:'#4A8C85',font:{size:9,family:'Inter,Arial,sans-serif'},maxTicksLimit:4},grid:{color:'rgba(107,191,181,0.15)'},title:{display:true,text:yl,color:'#4A8C85',font:{size:10,family:'Inter,Arial,sans-serif'}}}
+  }
+});
+
+const chV=new Chart(document.getElementById('cV').getContext('2d'),{
+  type:'line',
+  data:{labels:[],datasets:[{data:[],borderColor:'#1D9E75',borderWidth:2,pointRadius:0,tension:0.2,fill:false}]},
+  options:axOpts('t','v(t)')
+});
+const chW=new Chart(document.getElementById('cW').getContext('2d'),{
+  type:'line',
+  data:{labels:[],datasets:[{data:[],borderColor:'#5DCAA5',borderWidth:2,pointRadius:0,tension:0.3,fill:false}]},
+  options:axOpts('t','w(t)')
+});
+const chPh=new Chart(document.getElementById('cPh').getContext('2d'),{
+  type:'scatter',
+  data:{datasets:[
+    {data:[],showLine:true,borderColor:'#085041',borderWidth:2,pointRadius:0,tension:0},
+    {data:[],showLine:true,borderColor:'#1D9E75',borderWidth:1.2,pointRadius:0,borderDash:[5,4]},
+    {data:[],showLine:true,borderColor:'#9FE1CB',borderWidth:1.2,pointRadius:0,borderDash:[5,4]}
+  ]},
+  options:{
+    responsive:true,maintainAspectRatio:false,animation:{duration:120},
+    plugins:{legend:{display:false}},
+    scales:{
+      x:{type:'linear',min:-3,max:3,ticks:{color:'#4A8C85',font:{size:9,family:'Inter,Arial,sans-serif'},maxTicksLimit:7},grid:{color:'rgba(107,191,181,0.15)'},title:{display:true,text:'v',color:'#4A8C85',font:{size:10,family:'Inter,Arial,sans-serif'}}},
+      y:{ticks:{color:'#4A8C85',font:{size:9,family:'Inter,Arial,sans-serif'},maxTicksLimit:5},grid:{color:'rgba(107,191,181,0.15)'},title:{display:true,text:'w',color:'#4A8C85',font:{size:10,family:'Inter,Arial,sans-serif'}}}
+    }
+  }
+});
+
+function update(){
+  const I=+document.getElementById('sI').value;
+  const a=+document.getElementById('sA').value;
+  const b=+document.getElementById('sB').value;
+  const tau=+document.getElementById('sT').value;
+  const h=+document.getElementById('sH').value;
+
+  document.getElementById('oI').textContent=I.toFixed(2);
+  document.getElementById('oA').textContent=a.toFixed(2);
+  document.getElementById('oB').textContent=b.toFixed(2);
+  document.getElementById('oT').textContent=tau.toFixed(1);
+  const oH=document.getElementById('oH');
+  oH.textContent=h.toFixed(2);
+  oH.className='sl-num'+(h>0.25?' warn':'');
+
+  const res=rk4(I,a,b,tau,h);
+
+  const bRK=document.getElementById('bRK');
+  const bReg=document.getElementById('bReg');
+
+  if(res.bad){
+    bRK.textContent='inestable';bRK.className='badge-val err';
+    bReg.textContent='-';bReg.className='badge-val';
+    document.getElementById('bPicos').textContent='-';
+    document.getElementById('bVmax').textContent='-';
+  } else {
+    bRK.textContent='estable';bRK.className='badge-val ok';
+    const p=countPeaks(res.vs);
+    const vm=res.vs.length?Math.max(...res.vs):0;
+    document.getElementById('bPicos').textContent=p;
+    document.getElementById('bVmax').textContent=vm.toFixed(2);
+    if(p===0){bReg.textContent='reposo';bReg.className='badge-val';}
+    else{bReg.textContent='oscilatorio';bReg.className='badge-val ok';}
+  }
+
+  chV.data.labels=res.ts;
+  chV.data.datasets[0].data=res.vs;
+  chV.update();
+
+  chW.data.labels=res.ts;
+  chW.data.datasets[0].data=res.ws;
+  chW.update();
+
+  const sk=Math.max(1,Math.floor(res.vs.length/280));
+  chPh.data.datasets[0].data=res.vs.filter((_,i)=>i%sk===0).map((v,i)=>({x:+v.toFixed(3),y:+res.ws[i*sk].toFixed(3)}));
+  const n=nullclines(I,a,b);
+  chPh.data.datasets[1].data=n.vv.map((x,i)=>({x,y:n.nv[i]}));
+  chPh.data.datasets[2].data=n.vv.map((x,i)=>({x,y:n.nw[i]}));
+  chPh.update();
+}
+
+let deb=null;
+['sI','sA','sB','sT','sH'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',()=>{
+    clearTimeout(deb);
+    deb=setTimeout(update,55);
+  });
+});
+
+update();
+</script>
+</body>
+</html>
